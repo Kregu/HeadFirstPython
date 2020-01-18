@@ -16,15 +16,14 @@ def entry_page() -> 'html':
 @app.route('/viewlog')
 def view_the_log() -> 'html':
     contents = []
-    with open('vsearch.log', 'r') as log:
-        for line in log:
-            contents.append([])
-            for item in line.split('|'):
-                contents[-1].append(escape(item))
+    with UseDatabase(app.config['dbconfig']) as cursor:
+        _SQL = """SELECT phrase, letters, ip, browser_string, results FROM log"""
+        cursor.execute(_SQL)
+        contents = cursor.fetchall()
 
         return render_template('viewlog.html',
-                               the_title='View Log:',
-                               the_row_titles=('Form Data', 'Remote_addr', 'User_agent', 'Results'),
+                               the_title='View Log',
+                               the_row_titles=('Phrase', 'Letters', 'Remote_addr', 'User_agent', 'Results'),
                                the_data=contents,)
 
 
@@ -43,7 +42,6 @@ def do_search() -> 'html':
 
 
 def log_request(req: 'flask_request', res: str) -> None:
-
     with UseDatabase(app.config['dbconfig']) as cursor:
         _SQL = '''insert into log (phrase, letters, ip, browser_string, results) values (%s, %s, %s, %s, %s)'''
         cursor.execute(_SQL, (
