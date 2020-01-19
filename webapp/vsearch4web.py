@@ -1,12 +1,12 @@
 from flask import Flask, session
 from flask import render_template, request, escape
 from vsearch import search4letters
-from DBcm import UseDatabase, ConnectionError
+from DBcm import UseDatabase, ConnectionError, SQLError
 from checker import check_logged_in
 
 
 app = Flask(__name__)
-app.config['dbconfig'] = {'host': '127.0.0.1', 'user': 'vsearch', 'password': 'vsearchpasswdwrong', 'database': 'vsearchlogDB', }
+app.config['dbconfig'] = {'host': '127.0.0.1', 'user': 'vsearch', 'password': 'vsearchpasswd', 'database': 'vsearchlogDB', }
 
 @app.route('/')
 @app.route('/entry')
@@ -25,6 +25,10 @@ def view_the_log() -> 'html':
             contents = cursor.fetchall()
     except ConnectionError as err:
         print('***** Is your database switched in? Error:', str(err))
+    except SQLError as err:
+        print('***** Is your query correct? Error:', str(err))
+    except Exception as err:
+        print('Something went wrong:', str(err))
 
     return render_template('viewlog.html',
                             the_title='View Log',
