@@ -1,8 +1,10 @@
 from flask import Flask, session
 from flask import render_template, request, escape
+from flask import copy_current_request_context
 from vsearch import search4letters
 from DBcm import UseDatabase, ConnectionError, SQLError
 from checker import check_logged_in
+from threading import Thread
 
 
 app = Flask(__name__)
@@ -38,12 +40,25 @@ def view_the_log() -> 'html':
 
 @app.route('/search4', methods=['POST'])
 def do_search() -> 'html':
+
+    @copy_current_request_context
+    def log_request(req: 'flask_request', res: str) -> None:
+        with UseDatabase(app.config['dbconfig']) as cursor:
+            _SQL = '''insert into log (phrase, letters, ip, browser_string, results) values (%s, %s, %s, %s, %s)'''
+            cursor.execute(_SQL, (
+                                req.form['phrase'],
+                                req.form['letters'],
+                                req.remote_addr,
+                                req.user_agent.browser,
+                                res,))
+
     title = 'Here are your results:'
     phrase = request.form['phrase']
     letters = request.form['letters']
     results = str(search4letters(phrase, letters))
     try:
-        log_request(request, results)
+        t = Thread(target = log_request, args = (request, results))
+        t.start()
     except Exception as err:
         print('***** Logging failed with this error:', str(err))
     return render_template('results.html',
@@ -52,16 +67,6 @@ def do_search() -> 'html':
                            the_letters=letters,
                            the_results=results,)
 
-
-def log_request(req: 'flask_request', res: str) -> None:
-    with UseDatabase(app.config['dbconfig']) as cursor:
-        _SQL = '''insert into log (phrase, letters, ip, browser_string, results) values (%s, %s, %s, %s, %s)'''
-        cursor.execute(_SQL, (
-                            req.form['phrase'],
-                            req.form['letters'],
-                            req.remote_addr,
-                            req.user_agent.browser,
-                            res,))
 
 
 @app.route('/login')

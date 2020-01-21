@@ -27,7 +27,7 @@ class UseDatabase:
             raise SQLError(exc_value)
         elif exc_type:
             raise exc_type(exc_value)
-        
+
 
 
 
